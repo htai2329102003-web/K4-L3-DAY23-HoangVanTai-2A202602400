@@ -1,39 +1,41 @@
-# Postmortem — DR Drill Lab 23 (TEMPLATE)
+# Postmortem: Drill 2 A to B failover
 
-Theo đúng template §4 "Sau Failover: Blameless Postmortem". Blameless: câu hỏi là
-"hệ thống/process nào cho phép chuyện này", không phải "ai làm sai".
+This is blameless. The drill measures the system and process required to recover, not an individual's action.
 
-## 1. Timeline (mọi dòng phải có evidence path:line)
+## Timeline
 
-| ISO time | Sự kiện | Evidence |
+| ISO time | Event | Evidence |
 |---|---|---|
-| | outage bắt đầu | |
-| | user đầu tiên bị ảnh hưởng | |
-| | health check alert | |
-| | operator confirm cutover | |
-| | resolved (request đầu tiên OK từ region phụ) | |
+| 2026-10-09T07:04:19.160Z | A outage begins | `chaos/chaos-events.jsonl:5` |
+| 2026-10-09T07:04:20.062Z | First user failure | `reports/drill-2-withdr.jsonl:54` |
+| 2026-10-09T07:04:40.073Z | Health checker marks A unhealthy | `reports/health-events.jsonl:2` |
+| 2026-10-09T07:05:10.558Z | Operator announces cutover | `reports/runbook-run.jsonl:2` |
+| 2026-10-09T07:05:17.747Z | DNS cutover to B | `reports/failover-events.jsonl:5` |
+| 2026-10-09T07:05:21.326Z | First successful B request resolves incident | `reports/drill-2-withdr.jsonl:76` |
 
-## 2. RTO/RPO đo được vs mục tiêu — gap ở bước nào?
+## RTO/RPO and gap analysis
 
-- RTO mục tiêu: 300s · đo được: `__s` · gap: `__s`
-- RPO mục tiêu: 300s · đo được: `__s` (`__` doc bị mất) · gap: `__s`
-- **Bước tốn nhiều giây nhất:** `____` — vì sao?
+- RTO target: 300s. Actual: 62.2s. Gap: 237.8s below the target.
+- RPO target: 300s. Actual: 14.01s and 7 documents lost. Gap: 285.99s below the target.
+- Largest measured stage: incident activation plus snapshot restore, 30.72s after health detection.
 
-## 3. Root cause (5 whys)
+## Root cause: five whys
 
-Không phải "vì tôi chạy chaos script". Câu hỏi: *nếu đây là outage thật, bước nào
-trong runbook của tôi sẽ thất bại?*
+1. Users failed because A stopped while edge still routed to A.
+2. Edge did not move immediately because health checking waits for consecutive readiness failures.
+3. B was not initially ready because it was deliberately warm, empty, and had no weights.
+4. B needed snapshot restore and warm-to-full pool transition before readiness passed.
+5. Recovery appeared after DNS cutover because edge cache and the next load-generator request add delay.
 
-## 4. Action items (có owner + deadline)
+## Action items
 
-| # | Action | Owner | Deadline | Giảm RTO/RPO bao nhiêu giây |
+| # | Action item | Owner | Deadline | Expected effect |
 |---|---|---|---|---|
-| 1 | | | | |
-| 2 | | | | |
+| 1 | Evaluate a 1s health interval with anti-flap controls | SRE on-call | Before next drill | Up to 12s less detection floor; more probe load |
+| 2 | Automate alert delivery to reduce activation delay | Incident Commander | Before next drill | Reduce the 30.72s stage; no RPO change |
 
-## 5. Ba câu hỏi bắt buộc trả lời
+## Required answers
 
-1. `interval × threshold` của bạn là bao nhiêu giây? Nó chiếm bao nhiêu % RTO?
-2. Nếu hạ interval xuống 1s, RTO giảm mấy giây — và bạn trả giá gì (§4 flapping)?
-3. Nếu outage kéo dài 6 giờ và region chính mất dữ liệu vĩnh viễn, `docs_lost` của
-   bạn có nghĩa gì với khách hàng?
+1. Interval times threshold is 5.0s times 3, so the detection floor is 15.0s, about 24.1 percent of the 62.2s RTO.
+2. A 1s interval with threshold 3 reduces the theoretical floor by 12.0s, but increases probe load and flapping risk.
+3. For a six-hour permanent A outage, 7 documents lost means seven updates after the last snapshot are unavailable in B and can produce stale retrieval or inference results.

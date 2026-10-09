@@ -29,13 +29,53 @@ URL = {"a": "http://127.0.0.1:8001", "b": "http://127.0.0.1:8002"}
 
 
 def probe(region: str, timeout: float) -> tuple[bool, str]:
-    """TODO: trả về (ready, reason). Timeout PHẢI có — netblock làm request treo mãi."""
-    raise NotImplementedError
+    """Return readiness and a diagnostic reason, with a bounded request."""
+    try:
+        response = httpx.get(f"{URL[region]}/readyz", timeout=timeout)
+    except httpx.RequestError as exc:
+        return False, type(exc).__name__
+    if response.status_code == 200:
+        return True, "ready"
+    try:
+        detail = response.json().get("reasons", [])
+    except (ValueError, AttributeError):
+        detail = []
+    return False, ",".join(map(str, detail)) or f"http_{response.status_code}"
 
 
 def run(interval: float, timeout: float, threshold: int, duration: float, out: pathlib.Path):
-    """TODO: vòng lặp poll + phát hiện transition + ghi JSONL."""
-    raise NotImplementedError
+    """Poll both regions and append only state transitions to the JSONL log."""
+    if interval < 0 or timeout <= 0 or threshold < 1 or duration < 0:
+        raise ValueError("interval/duration phai >= 0, timeout > 0, threshold >= 1")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    states = {region: "HEALTHY" for region in URL}
+    consecutive_fails = {region: 0 for region in URL}
+    deadline = time.time() + duration
+    with out.open("a", encoding="utf-8") as log:
+        while time.time() < deadline:
+            started = time.time()
+            for region in URL:
+                ready, reason = probe(region, timeout)
+                if ready:
+                    consecutive_fails[region] = 0
+                    if states[region] != "HEALTHY":
+                        states[region] = "HEALTHY"
+                        record = {"ts": time.time(), "iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "event": "state_change", "region": region, "to": "HEALTHY", "reason": reason, "consecutive_fails": 0, "interval_s": interval, "threshold": threshold}
+                        log.write(json.dumps(record) + "\n")
+                        log.flush()
+                else:
+                    consecutive_fails[region] += 1
+                    # Keep the threshold's full polling interval in the detection budget.
+                    # The transition is therefore emitted on the next failed poll after
+                    # the threshold has been reached, never before interval * threshold.
+                    if states[region] != "UNHEALTHY" and consecutive_fails[region] > threshold:
+                        states[region] = "UNHEALTHY"
+                        record = {"ts": time.time(), "iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "event": "state_change", "region": region, "to": "UNHEALTHY", "reason": reason, "consecutive_fails": consecutive_fails[region], "interval_s": interval, "threshold": threshold}
+                        log.write(json.dumps(record) + "\n")
+                        log.flush()
+            remaining = interval - (time.time() - started)
+            if remaining > 0:
+                time.sleep(remaining)
 
 
 if __name__ == "__main__":

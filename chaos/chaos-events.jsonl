@@ -1,0 +1,5 @@
+{"ts": 1791522015.3901305, "iso": "2026-10-09T05:00:15", "action": "kill", "region": "a", "mode": "stop", "backend": "docker", "mock": false, "other_region": "b", "other_alive": true, "forced_both": false, "note": "t_outage_start \u2014 moc 0 cua RTO clock"}
+{"ts": 1791522066.7066026, "iso": "2026-10-09T05:01:06", "action": "restore", "region": "a", "method": "docker_start+iptables_flush"}
+{"ts": 1791522455.5053802, "iso": "2026-10-09T05:07:35", "action": "kill", "region": "a", "mode": "stop", "backend": "docker", "mock": false, "other_region": "b", "other_alive": true, "forced_both": false, "note": "t_outage_start \u2014 moc 0 cua RTO clock"}
+{"ts": 1791523841.8071535, "iso": "2026-10-09T05:30:41", "action": "kill", "region": "a", "mode": "stop", "backend": "docker", "mock": false, "other_region": "b", "other_alive": true, "forced_both": false, "note": "t_outage_start \u2014 moc 0 cua RTO clock"}
+{"ts": 1791529459.1601553, "iso": "2026-10-09T07:04:19", "action": "kill", "region": "a", "mode": "stop", "backend": "docker", "mock": false, "other_region": "b", "other_alive": true, "forced_both": false, "note": "t_outage_start \u2014 moc 0 cua RTO clock"}

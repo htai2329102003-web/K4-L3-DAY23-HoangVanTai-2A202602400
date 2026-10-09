@@ -1,40 +1,42 @@
-# RTO/RPO Evidence — Lab 23 (TEMPLATE — sinh viên điền bằng SỐ CỦA MÌNH)
+# RTO/RPO Evidence: Lab 23
 
-Quy tắc duy nhất: mỗi con số ở đây phải trỏ được về **một dòng log thật**
-(`đường/dẫn.jsonl:số_dòng`). `pytest tests/test_rto_evidence.py` sẽ mở từng file ra kiểm tra.
-Con số không có evidence = trượt, bất kể các phần khác.
+All values below come from timestamps in the cited log lines.
 
-## 1. Drill 1 — không có DR (baseline)
+## Drill 1: no DR
 
-| Chỉ số | Giá trị | Cách đo | Evidence |
-|---|---|---|---|
-| t_outage | `<iso>` | chaos kill | `chaos/chaos-events.jsonl:1` |
-| Request fail đầu tiên | `+__s` | dòng `ok:false` đầu tiên sau t_outage | `reports/drill-1-nodr.jsonl:__` |
-| Request thành công sau đó | không có | không có dòng `ok:true` nào sau t_outage | `reports/measure-drill-1.json` |
-| RTO | `NO_RECOVERY` | `tools/measure_rto.py` | `reports/measure-drill-1.json` |
+| Metric | Value | Evidence |
+|---|---:|---|
+| Outage | 2026-10-09T05:00:15Z | `chaos/chaos-events.jsonl:1` |
+| First user failure | 0.8s | `reports/drill-1-nodr.jsonl:71` |
+| Recovery | none | `reports/drill-1-nodr.jsonl:74` |
+| RTO verdict | NO_RECOVERY | `reports/drill-1-nodr.jsonl:71` |
 
-## 2. Drill 2 — có DR
+## Drill 2: DR enabled
 
-| Mốc | +giây từ t_outage | Cách đo | Evidence |
-|---|---|---|---|
-| t_outage (mốc 0) | 0 | `action:kill` | `chaos/chaos-events.jsonl:__` |
-| User thấy lỗi đầu tiên | | dòng `ok:false` đầu | `reports/drill-2-withdr.jsonl:__` |
-| Health check phát hiện | | `to:UNHEALTHY, region:a` | `reports/health-events.jsonl:__` |
-| Snapshot restore xong | | `step:2_restore_snapshot` | `reports/failover-events.jsonl:__` |
-| Region phụ ready | | `step:4_wait_ready` | `reports/failover-events.jsonl:__` |
-| DNS cutover | | `step:5_dns_cutover` | `reports/failover-events.jsonl:__` |
-| **RTO đo được** | | dòng `ok:true` đầu sau lỗi | `reports/drill-2-withdr.jsonl:__` |
+| Milestone | Seconds from outage | Evidence |
+|---|---:|---|
+| Outage, time zero | 0.0s | `chaos/chaos-events.jsonl:5` |
+| First user failure | 0.9s | `reports/drill-2-withdr.jsonl:54` |
+| Health detection for A | 20.9s | `reports/health-events.jsonl:2` |
+| Snapshot restore complete | 51.6s | `reports/failover-events.jsonl:2` |
+| B ready | 58.3s | `reports/failover-events.jsonl:4` |
+| DNS cutover | 58.6s | `reports/failover-events.jsonl:5` |
+| Measured RTO, first successful B request | 62.2s | `reports/drill-2-withdr.jsonl:76` |
 
-| Chỉ số | Đo được | Mục tiêu (slide §1) | Verdict |
-|---|---|---|---|
-| RTO — Inference API | `__s` | 300s (5 phút) | |
-| RPO — Vector DB | `__s` / `__` doc | 300s (5 phút) | |
+| Metric | Actual | Target | Verdict |
+|---|---:|---:|---|
+| Inference RTO | 62.2s | 300s | PASS |
+| Vector DB RPO | 14.01s / 7 documents lost | 300s | PASS |
 
-## 3. RTO của tôi gồm những gì (bắt buộc — đây là phần chấm điểm hiểu bài)
+## RTO breakdown
 
-| Thành phần | Giây | Nó đến từ đâu | Giảm được bằng cách nào |
-|---|---|---|---|
-| Health-check detect floor | | `interval_s × threshold` trong `reports/health-events.jsonl:__` | |
-| Snapshot restore | | 2_restore → 3_scale | |
-| GPU pool warm-up | | `waited_s` ở `4_wait_ready` | |
-| DNS/LB TTL cache | | t_recovered − t_cutover | |
+The measured components total 20.91 + 30.72 + 6.71 + 3.83 = 62.17s, rounded to the measured RTO of 62.2s.
+
+| Component | Seconds | Source | Reduction option |
+|---|---:|---|---|
+| Health detection | 20.91s | `chaos/chaos-events.jsonl:5`, `reports/health-events.jsonl:2` | Lower interval with anti-flap safeguards |
+| Incident activation and snapshot restore | 30.72s | `reports/health-events.jsonl:2`, `reports/failover-events.jsonl:2` | Faster alert/triage and restore |
+| GPU pool warm-up | 6.71s | `reports/failover-events.jsonl:3`, `reports/failover-events.jsonl:4` | Warm standby |
+| DNS cutover and cache to recovery | 3.83s | `reports/failover-events.jsonl:4`, `reports/failover-events.jsonl:5`, `reports/drill-2-withdr.jsonl:76` | Review TTL/cache policy |
+
+Health configuration was interval 5.0s and threshold 3, a 15.0s detection floor, in `reports/health-events.jsonl:2`. Restore recorded RPO 14.01s and 7 documents lost in `reports/failover-events.jsonl:2`.

@@ -1,0 +1,13 @@
+{"ts": 1791529510.7609026, "iso": "2026-10-09T07:05:10Z", "step": "1_verify_target", "target": "b", "state": {"region": "b", "pool_state": "warm", "weights": false, "count": 0, "latest_doc_ts": null, "ts": 1791529510.7591186}}
+{"ts": 1791529510.7925284, "iso": "2026-10-09T07:05:10Z", "step": "2_restore_snapshot", "target": "b", "ok": true, "snapshot_at": 1791529497.1937766, "rpo_seconds": 14.01, "docs_lost": 7, "embed_model_version": "embed-model=vi-e5-base@v3"}
+{"ts": 1791529510.7930548, "iso": "2026-10-09T07:05:10Z", "step": "3_scale_pool", "target": "b", "pool_state": "full"}
+{"ts": 1791529517.4986293, "iso": "2026-10-09T07:05:17Z", "step": "4_wait_ready", "target": "b", "ok": true, "wait_s": 60, "reason": null, "ready": {"region": "b", "ready": true, "reasons": [], "pool_state": "full", "vectors": {"count": 245, "latest_doc_ts": 1791529495.2114868}, "ts": 1791529517.4938998}}
+{"ts": 1791529517.7468438, "iso": "2026-10-09T07:05:17Z", "step": "5_dns_cutover", "target": "b", "ok": true}
+{"ts": 1791529663.672101, "iso": "2026-10-09T07:07:43Z", "step": "1_verify_target", "target": "b", "state": {"region": "b", "pool_state": "warm"}}
+{"ts": 1791529663.6749768, "iso": "2026-10-09T07:07:43Z", "step": "2_restore_snapshot", "target": "b", "ok": true, "snapshot_at": 1791529663.672101, "rpo_seconds": 60.03, "docs_lost": 30, "embed_model_version": "test"}
+{"ts": 1791529663.6749768, "iso": "2026-10-09T07:07:43Z", "step": "3_scale_pool", "target": "b", "pool_state": "full"}
+{"ts": 1791529664.6752558, "iso": "2026-10-09T07:07:44Z", "step": "4_wait_ready", "target": "b", "ok": false, "wait_s": 1.0, "reason": "ConnectError", "ready": null}
+{"ts": 1791531818.03381, "iso": "2026-10-09T07:43:38Z", "step": "1_verify_target", "target": "b", "state": {"region": "b", "pool_state": "warm"}}
+{"ts": 1791531818.0380936, "iso": "2026-10-09T07:43:38Z", "step": "2_restore_snapshot", "target": "b", "ok": true, "snapshot_at": 1791531818.03381, "rpo_seconds": 60.03, "docs_lost": 30, "embed_model_version": "test"}
+{"ts": 1791531818.0393631, "iso": "2026-10-09T07:43:38Z", "step": "3_scale_pool", "target": "b", "pool_state": "full"}
+{"ts": 1791531819.0412028, "iso": "2026-10-09T07:43:39Z", "step": "4_wait_ready", "target": "b", "ok": false, "wait_s": 1.0, "reason": "ConnectError", "ready": null}
